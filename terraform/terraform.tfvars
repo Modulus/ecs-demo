@@ -6,7 +6,13 @@ backend_target_group_name = "ecs-demo-backend-target-group"
 
 route53_zone_domain = "aws5.tv2.no."
 
+
+task_cpu = 4096
+task_memory = 8192
+
 backend_service_name  = "generator"
+
+
 backend_task_cpu = 2048
 
 backend_task_memory = 4096
@@ -18,9 +24,33 @@ ecs_cluster_name = "ecs-demo"
 
 backend_image = "coderpews/name-generator:1.3"
 
+frontend_service_name = "name"
+frontend_container_port = 80,
+frontend_host_port = 80
+frontend_image = "coderpews/name-generator-front:1.7"
+
 alb_port = 80
 
 vpc_name = "Default VPC"
+
+services = [
+    {
+        "id" = 1,
+        "name" = "generator"
+        "container_port" = 5000,
+        "host_port" = 5000,
+        "image" = "coderpews/name-generator:1.3"
+
+    },
+    {
+        "id" = 2,
+        "name" = "frontend"
+        "container_port" = 80,
+        "host_port" = 80
+        "image" = "coderpews/name-generator-front:1.7"
+
+    }
+]
 
 subnet1_name = "Default subnet for eu-west-1c"
 subnet2_name = "Default subnet for eu-west-1a"

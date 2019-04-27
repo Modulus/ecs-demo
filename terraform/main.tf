@@ -2,6 +2,11 @@ variable "region" {}
 variable "backend_target_group_name" {}
 variable "route53_zone_domain" {} 
 variable backend_service_name {   }
+
+variable "task_cpu" {}
+
+variable "task_memory" {}
+
 variable backend_task_cpu {        }
 variable backend_task_memory  {}
 variable backend_container_port {}  
@@ -14,6 +19,10 @@ variable subnet1_name {}
 variable subnet2_name {}
 variable subnet3_name {}
 
+variable frontend_service_name {}
+variable frontend_container_port {}
+variable frontend_host_port {}
+variable frontend_image {}
 
 terraform {
   backend "s3" {
@@ -86,7 +95,14 @@ resource "aws_security_group" "ecs_tasks" {
   ingress {
     protocol        = "tcp"
     from_port       = "${var.backend_container_port}"
-    to_port         = "${var.backend_host_port}"
+    to_port         = "${var.backend_container_port}"
+    security_groups = ["${aws_security_group.allow_http.id}"]
+  }
+
+  ingress {
+    protocol        = "tcp"
+    from_port       = "${var.frontend_container_port}"
+    to_port         = "${var.frontend_container_port}"
     security_groups = ["${aws_security_group.allow_http.id}"]
   }
 
@@ -155,6 +171,24 @@ resource "aws_lb" "main_alb" {
   }
 }
 
+
+
+resource "aws_lb" "front_alb" {
+  name = "frontend-alb"
+
+  //internal           = false
+  load_balancer_type = "application"
+  security_groups    = ["${aws_security_group.allow_http.id}"]
+  subnets            = ["${data.aws_subnet.main_subnet1.id}", "${data.aws_subnet.main_subnet2.id}", "${data.aws_subnet.main_subnet3.id}"]
+
+  enable_deletion_protection = false
+
+  tags = {
+    Environment = "production"
+    purpose     = "Demo"
+  }
+}
+
 output "alb_dns_entry" {
   value = "${aws_lb.main_alb.dns_name}"
 }
@@ -166,7 +200,6 @@ resource "aws_alb_target_group" "backend_alb_target_group" {
   protocol    = "HTTP"
   vpc_id      = "${data.aws_vpc.main_vpc.id}"
   target_type = "ip"
-
   health_check = {
     path    = "/"
     matcher = "200-299"
@@ -178,7 +211,25 @@ resource "aws_alb_target_group" "backend_alb_target_group" {
   }
 }
 
-resource "aws_alb_listener" "alb_listener" {
+resource "aws_alb_target_group" "frontend_alb_target_group" {
+  name        = "frontend-alb-target-group"
+  port        = "80"
+  protocol    = "HTTP"
+  vpc_id      = "${data.aws_vpc.main_vpc.id}"
+  target_type = "ip"
+
+  health_check = {
+    path    = "/"
+    matcher = "200-299"
+    port    = "${var.frontend_container_port}"
+  }
+
+  lifecycle {
+    create_before_destroy = true
+  }
+}
+
+resource "aws_alb_listener" "alb_listener_backend" {
   load_balancer_arn = "${aws_lb.main_alb.id}"
   port              = "${var.alb_port}"
   protocol          = "HTTP"
@@ -187,6 +238,19 @@ resource "aws_alb_listener" "alb_listener" {
 
   default_action {
     target_group_arn = "${aws_alb_target_group.backend_alb_target_group.id}"
+    type             = "forward"
+  }
+}
+
+resource "aws_alb_listener" "alb_listene_frontend" {
+  load_balancer_arn = "${aws_lb.front_alb.id}"
+  port              = "${var.alb_port}"
+  protocol          = "HTTP"
+  #ssl_policy        = "ELBSecurityPolicy-2016-08"
+  #certificate_arn   = "TODO_ADD"
+
+  default_action {
+    target_group_arn = "${aws_alb_target_group.frontend_alb_target_group.id}"
     type             = "forward"
   }
 }
@@ -252,8 +316,8 @@ resource "aws_ecs_cluster" "ecs_cluster" {
 resource "aws_ecs_task_definition" "name-generator-backend" {
   family                   = "${var.backend_service_name}"
   requires_compatibilities = ["FARGATE"]
-  cpu                      = "${var.backend_task_cpu}"
-  memory                   = "${var.backend_task_memory}"
+  cpu                      = "${var.task_cpu}"
+  memory                   = "${var.task_memory}"
   network_mode             = "awsvpc"
   execution_role_arn       = "${aws_iam_role.ecs_role.arn}"
   task_role_arn            = "${aws_iam_role.ecs_role.arn}"
@@ -274,8 +338,27 @@ resource "aws_ecs_task_definition" "name-generator-backend" {
     ],
     "environment": [
       {
-        "name": "NADA",
-        "value": "Test"
+        "name": "App",
+        "value": "backend"
+      }
+    ]
+  },
+    {
+    "cpu": ${var.backend_task_cpu},
+    "image": "${var.frontend_image}",
+    "memory": ${var.backend_task_memory},
+    "name": "${var.frontend_service_name}",
+    "networkMode": "awsvpc",
+    "portMappings": [
+      {
+        "containerPort": ${var.frontend_container_port},
+        "hostPort": ${var.frontend_host_port}
+      }
+    ],
+    "environment": [
+      {
+        "name": "App",
+        "value": "frontend"
       }
     ]
   }
@@ -303,7 +386,31 @@ resource "aws_ecs_service" "backend-service" {
   }
 
   depends_on = [
-    "aws_alb_listener.alb_listener",
+    "aws_alb_listener.alb_listener_backend",
+  ]
+}
+
+resource "aws_ecs_service" "frontend-service" {
+  name            = "${var.frontend_service_name}"
+  task_definition = "${aws_ecs_task_definition.name-generator-backend.arn}"
+  cluster         = "${aws_ecs_cluster.ecs_cluster.arn}"
+  desired_count   = 1
+  launch_type     = "FARGATE"
+
+  network_configuration {
+    assign_public_ip = true                                                                                                               // Needs to be set to true in a vpc that has public ips
+    security_groups  = ["${aws_security_group.ecs_tasks.id}"]
+    subnets          = ["${data.aws_subnet.main_subnet1.id}", "${data.aws_subnet.main_subnet2.id}", "${data.aws_subnet.main_subnet3.id}"]
+  }
+
+  load_balancer {
+    container_name   = "${var.frontend_service_name}"
+    container_port   = "${var.frontend_container_port}"
+    target_group_arn = "${aws_alb_target_group.frontend_alb_target_group.arn}"
+  }
+
+  depends_on = [
+    "aws_alb_listener.alb_listene_frontend",
   ]
 }
 
@@ -313,23 +420,44 @@ data "aws_route53_zone" "selected" {
   private_zone = false
 }
 
-////
-resource "aws_route53_record" "www" {
+//// TODO Create A with alias instead of CNAME 
+resource "aws_route53_record" "backend_record" {
   zone_id        = "${data.aws_route53_zone.selected.zone_id}"
   name           = "${var.backend_service_name}"
   type           = "CNAME"
   ttl            = "60"
   set_identifier = "${aws_lb.main_alb.dns_name}"
   records        = ["${aws_lb.main_alb.dns_name}"]
+  weighted_routing_policy {
+    weight = 10
+  }
+}
+
+resource "aws_route53_record" "frontend_record" {
+  zone_id        = "${data.aws_route53_zone.selected.zone_id}"
+  name           = "${var.frontend_service_name}"
+  type           = "CNAME"
+  ttl            = "60"
+  set_identifier = "${aws_lb.front_alb.dns_name}"
+  records        = ["${aws_lb.front_alb.dns_name}"]
  weighted_routing_policy {
     weight = 10
   }
 }
 
-output "service_fqdn" {
-  value = "${aws_route53_record.www.fqdn}"
+output "backend_service_fqdn" {
+  value = "${aws_route53_record.backend_record.fqdn}"
 }
 
-output "service_name" {
-  value = "${aws_route53_record.www.name}"
+output "backend_service_name" {
+  value = "${aws_route53_record.backend_record.name}"
+}
+
+
+output "frontend_service_fqdn" {
+  value = "${aws_route53_record.frontend_record.fqdn}"
+}
+
+output "frontend_service_name" {
+  value = "${aws_route53_record.frontend_record.name}"
 }
