@@ -1,0 +1,22 @@
+[
+    {
+      "name": "frontend",
+      "image": "coderpews/name-generator-frontend",
+      "cpu": 2,
+      "memory": 2048,
+      "essential": true,
+      "portMappings": [
+        {
+          "containerPort": 80,
+          "hostPort": 80
+        }
+      ],
+      "environment": [
+        {
+          "name": "NAME",
+          "value": "kjekkas"
+        }
+      ]
+    }
+  ]
+  
