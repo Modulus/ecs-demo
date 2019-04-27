@@ -168,7 +168,7 @@ resource "aws_alb_target_group" "backend_alb_target_group" {
   target_type = "ip"
 
   health_check = {
-    path    = "/health"
+    path    = "/"
     matcher = "200-299"
     port    = "${var.backend_container_port}"
   }
@@ -227,7 +227,6 @@ resource "aws_iam_role_policy" "task_policy" {
         "ec2:Describe*",
         "ecr:*",
         "ecs:*",
-        "s3:*",
         "logs:*"
 
       ],
@@ -238,6 +237,8 @@ resource "aws_iam_role_policy" "task_policy" {
 }
 EOF
 }
+
+
 
 resource "aws_ecs_cluster" "ecs_cluster" {
   name = "${var.ecs_cluster_name}"
