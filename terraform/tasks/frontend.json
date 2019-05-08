@@ -1,7 +1,7 @@
 [
     {
       "name": "frontend",
-      "image": "coderpews/name-generator-frontend",
+      "image": "coderpews/name-generator-frontend:1.8",
       "cpu": 2,
       "memory": 2048,
       "essential": true,

@@ -22,12 +22,12 @@ backend_host_port = 5000
    
 ecs_cluster_name = "ecs-demo"
 
-backend_image = "coderpews/name-generator:1.3"
+backend_image = "coderpews/name-generator:1.4"
 
 frontend_service_name = "name"
 frontend_container_port = 80,
 frontend_host_port = 80
-frontend_image = "coderpews/name-generator-front:1.7"
+frontend_image = "coderpews/name-generator-front:2.0"
 
 alb_port = 80
 
@@ -39,7 +39,7 @@ services = [
         "name" = "generator"
         "container_port" = 5000,
         "host_port" = 5000,
-        "image" = "coderpews/name-generator:1.3"
+        "image" = "coderpews/name-generator:1.4"
 
     },
     {
@@ -47,7 +47,7 @@ services = [
         "name" = "frontend"
         "container_port" = 80,
         "host_port" = 80
-        "image" = "coderpews/name-generator-front:1.7"
+        "image" = "coderpews/name-generator-front:2.0"
 
     }
 ]

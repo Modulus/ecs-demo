@@ -1,7 +1,7 @@
 [
     {
       "name": "backend",
-      "image": "coderpews/name-generator",
+      "image": "coderpews/name-generator:1.4",
       "cpu": 2,
       "memory": 2048,
       "essential": true,
