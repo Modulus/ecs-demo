@@ -15,10 +15,6 @@ variable ecs_cluster_name {}
 variable backend_image {} 
 variable alb_port {}
 variable vpc_name {}
-variable subnet1_name {}
-variable subnet2_name {}
-variable subnet3_name {}
-
 variable frontend_service_name {}
 variable frontend_container_port {}
 variable frontend_host_port {}

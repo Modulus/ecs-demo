@@ -16,20 +16,33 @@ provider "aws" {
 }
 
 data "aws_vpc" "main_vpc" {
-  #cidr_block = "172.31.0.0/16"
   filter {
-    name   = "tag:Name"
+    name = "tag:Name"
     values = ["${var.vpc_name}"]
   }
 }
 
-output "vpc_cidr_block" {
-  value = "${data.aws_vpc.main_vpc.cidr_block}"
+output "vpc_id" {
+  value = "${data.aws_vpc.main_vpc.id}"
 }
 
-output "vpc_tags" {
-  value = "${data.aws_vpc.main_vpc.tags}"
+
+data "aws_subnet_ids" "default_subnet_ids" {
+  vpc_id = "${data.aws_vpc.main_vpc.id}"
 }
+
+output "subnet_ids" {
+  value = "${data.aws_subnet_ids.default_subnet_ids.ids}"
+}
+
+                                                                    
+# data "aws_subnet" "subnets" {                                   
+#   count = length(data.aws_subnet_ids.default_subnet_ids.ids)
+#   id    = local.subnet_ids_list[count.index]                        
+# }                                                                   
+
+
+
 
 # Security group for alb
 resource "aws_security_group" "allow_http" {
@@ -88,45 +101,6 @@ resource "aws_security_group" "ecs_tasks" {
   }
 }
 
-# Gather subnets connected to the chosen vpc
-data "aws_subnet" "main_subnet1" {
-  vpc_id = "${data.aws_vpc.main_vpc.id}"
-
-  filter {
-    name   = "tag:Name"
-    values = ["${var.subnet1_name}"]
-  }
-}
-
-data "aws_subnet" "main_subnet2" {
-  vpc_id = "${data.aws_vpc.main_vpc.id}"
-
-  filter {
-    name   = "tag:Name"
-    values = ["${var.subnet2_name}"]
-  }
-}
-
-data "aws_subnet" "main_subnet3" {
-  vpc_id = "${data.aws_vpc.main_vpc.id}"
-
-  filter {
-    name   = "tag:Name"
-    values = ["${var.subnet3_name}"]
-  }
-}
-
-output "subnet1_tags" {
-  value = "${data.aws_subnet.main_subnet1.tags}"
-}
-
-output "subnet2_tags" {
-  value = "${data.aws_subnet.main_subnet2.tags}"
-}
-
-output "subnet3_tags" {
-  value = "${data.aws_subnet.main_subnet3.tags}"
-}
 
 # Create alb with vpc, subnets and security groups from previous steps
 resource "aws_lb" "main_alb" {
@@ -135,7 +109,7 @@ resource "aws_lb" "main_alb" {
   //internal           = false
   load_balancer_type = "application"
   security_groups    = ["${aws_security_group.allow_http.id}"]
-  subnets            = ["${data.aws_subnet.main_subnet1.id}", "${data.aws_subnet.main_subnet2.id}", "${data.aws_subnet.main_subnet3.id}"]
+  subnets            = flatten(data.aws_subnet_ids.default_subnet_ids.ids)
 
   enable_deletion_protection = false
 
@@ -153,7 +127,7 @@ resource "aws_lb" "front_alb" {
   //internal           = false
   load_balancer_type = "application"
   security_groups    = ["${aws_security_group.allow_http.id}"]
-  subnets            = ["${data.aws_subnet.main_subnet1.id}", "${data.aws_subnet.main_subnet2.id}", "${data.aws_subnet.main_subnet3.id}"]
+  subnets            = flatten(data.aws_subnet_ids.default_subnet_ids.ids)
 
   enable_deletion_protection = false
 
@@ -350,7 +324,7 @@ resource "aws_ecs_service" "backend-service" {
   network_configuration {
     assign_public_ip = true                                                                                                               // Needs to be set to true in a vpc that has public ips
     security_groups  = ["${aws_security_group.ecs_tasks.id}"]
-    subnets          = ["${data.aws_subnet.main_subnet1.id}", "${data.aws_subnet.main_subnet2.id}", "${data.aws_subnet.main_subnet3.id}"]
+    subnets          = flatten(data.aws_subnet_ids.default_subnet_ids.ids)
   }
 
   load_balancer {
@@ -374,7 +348,7 @@ resource "aws_ecs_service" "frontend-service" {
   network_configuration {
     assign_public_ip = true                                                                                                               // Needs to be set to true in a vpc that has public ips
     security_groups  = ["${aws_security_group.ecs_tasks.id}"]
-    subnets          = ["${data.aws_subnet.main_subnet1.id}", "${data.aws_subnet.main_subnet2.id}", "${data.aws_subnet.main_subnet3.id}"]
+    subnets          = flatten(data.aws_subnet_ids.default_subnet_ids.ids)
   }
 
   load_balancer {

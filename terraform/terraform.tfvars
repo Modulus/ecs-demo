@@ -52,6 +52,6 @@ services = [
     }
 ]
 
-subnet1_name = "Default subnet for eu-west-1c"
-subnet2_name = "Default subnet for eu-west-1a"
-subnet3_name = "Default subnet for eu-west-1b"
+# subnet1_name = "Default subnet for eu-west-1c"
+# subnet2_name = "Default subnet for eu-west-1a"
+# subnet3_name = "Default subnet for eu-west-1b"
