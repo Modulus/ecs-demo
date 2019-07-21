@@ -35,15 +35,6 @@ output "subnet_ids" {
   value = "${data.aws_subnet_ids.default_subnet_ids.ids}"
 }
 
-                                                                    
-# data "aws_subnet" "subnets" {                                   
-#   count = length(data.aws_subnet_ids.default_subnet_ids.ids)
-#   id    = local.subnet_ids_list[count.index]                        
-# }                                                                   
-
-
-
-
 # Security group for alb
 resource "aws_security_group" "allow_http" {
   name        = "ecs-demo-backend-security-group"
@@ -74,17 +65,10 @@ resource "aws_security_group" "allow_http" {
   }
 }
 
-resource "aws_security_group" "ecs_tasks" {
-  name        = "ecs-demo-bakend-task-security-group"
+resource "aws_security_group" "frontend-task-sg" {
+  name        = "ecs-demo-frontend-task-security-group"
   description = "allow inbound access from the ALB only"
   vpc_id      = "${data.aws_vpc.main_vpc.id}"
-
-  ingress {
-    protocol        = "tcp"
-    from_port       = "${var.backend_container_port}"
-    to_port         = "${var.backend_container_port}"
-    security_groups = ["${aws_security_group.allow_http.id}"]
-  }
 
   ingress {
     protocol        = "tcp"
@@ -101,6 +85,26 @@ resource "aws_security_group" "ecs_tasks" {
   }
 }
 
+
+resource "aws_security_group" "backend-task-sg" {
+  name        = "ecs-demo-bakend-task-security-group"
+  description = "allow inbound access from the ALB only"
+  vpc_id      = "${data.aws_vpc.main_vpc.id}"
+
+  ingress {
+    protocol        = "tcp"
+    from_port       = "${var.backend_container_port}"
+    to_port         = "${var.backend_container_port}"
+    security_groups = ["${aws_security_group.allow_http.id}"]
+  }
+
+  egress {
+    protocol    = "-1"
+    from_port   = 0
+    to_port     = 0
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+}
 
 # Create alb with vpc, subnets and security groups from previous steps
 resource "aws_lb" "main_alb" {
@@ -323,7 +327,7 @@ resource "aws_ecs_service" "backend-service" {
 
   network_configuration {
     assign_public_ip = true                                                                                                               // Needs to be set to true in a vpc that has public ips
-    security_groups  = ["${aws_security_group.ecs_tasks.id}"]
+    security_groups  = ["${aws_security_group.backend-task-sg.id}"]
     subnets          = flatten(data.aws_subnet_ids.default_subnet_ids.ids)
   }
 
@@ -347,7 +351,7 @@ resource "aws_ecs_service" "frontend-service" {
 
   network_configuration {
     assign_public_ip = true                                                                                                               // Needs to be set to true in a vpc that has public ips
-    security_groups  = ["${aws_security_group.ecs_tasks.id}"]
+    security_groups  = ["${aws_security_group.frontend-task-sg.id}"]
     subnets          = flatten(data.aws_subnet_ids.default_subnet_ids.ids)
   }
 
