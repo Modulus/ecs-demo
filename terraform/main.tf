@@ -1,36 +1,10 @@
-variable "region" {}
-variable "backend_target_group_name" {}
-variable "route53_zone_domain" {} 
-variable backend_service_name {   }
-
-variable "task_cpu" {}
-
-variable "task_memory" {}
-
-variable backend_task_cpu {        }
-variable backend_task_memory  {}
-variable backend_container_port {}  
-variable backend_host_port {}   
-variable ecs_cluster_name {} 
-variable backend_image {} 
-variable alb_port {}
-variable vpc_name {}
-variable subnet1_name {}
-variable subnet2_name {}
-variable subnet3_name {}
-
-variable frontend_service_name {}
-variable frontend_container_port {}
-variable frontend_host_port {}
-variable frontend_image {}
-
 terraform {
   backend "s3" {
     bucket = "terrafromstate-johns-dev-knask"
     key = "terraform/ecs-demo"
     region = "eu-west-1"
     skip_region_validation = true
-      profile = "aws5_ecs_demo_admin"
+    profile = "aws5_ecs_demo_admin"
   }
 }
 
@@ -63,7 +37,7 @@ resource "aws_security_group" "allow_http" {
   description = "Control access to ALB"
   vpc_id      = "${data.aws_vpc.main_vpc.id}"
 
-  tags {
+  tags = {
     purpose = "Demo"
     Environment = "production"
   }
@@ -200,7 +174,7 @@ resource "aws_alb_target_group" "backend_alb_target_group" {
   protocol    = "HTTP"
   vpc_id      = "${data.aws_vpc.main_vpc.id}"
   target_type = "ip"
-  health_check = {
+  health_check  {
     path    = "/"
     matcher = "200-299"
     port    = "${var.backend_container_port}"
@@ -218,7 +192,7 @@ resource "aws_alb_target_group" "frontend_alb_target_group" {
   vpc_id      = "${data.aws_vpc.main_vpc.id}"
   target_type = "ip"
 
-  health_check = {
+  health_check  {
     path    = "/"
     matcher = "200-299"
     port    = "${var.frontend_container_port}"

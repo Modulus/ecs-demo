@@ -25,7 +25,7 @@ ecs_cluster_name = "ecs-demo"
 backend_image = "coderpews/name-generator:1.4"
 
 frontend_service_name = "name"
-frontend_container_port = 80,
+frontend_container_port = 80
 frontend_host_port = 80
 frontend_image = "coderpews/name-generator-front:2.0"
 
