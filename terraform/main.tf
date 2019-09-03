@@ -15,6 +15,19 @@ provider "aws" {
   profile = "aws5_ecs_demo_admin"
 }
 
+
+# Logging fra containere
+resource "aws_cloudwatch_log_group" "ecs-demo-logs" {
+  name = "ecs-demo-logs"
+
+  tags = {
+    Environment = "production"
+    Application = "name-generator"
+  }
+}
+
+
+
 data "aws_vpc" "main_vpc" {
   filter {
     name   = "tag:Name"
@@ -288,6 +301,14 @@ resource "aws_ecs_task_definition" "name-generator-backend" {
         "hostPort": ${var.backend_host_port}
       }
     ],
+    "logConfiguration" : {
+        "logDriver" : "awslogs",
+        "options" : {
+          "awslogs-group" : "ecs-demo-logs",
+          "awslogs-region" : "${var.region}",
+          "awslogs-stream-prefix": "backend-"
+        }
+    },
     "environment": [
       {
         "name": "App",
@@ -307,6 +328,14 @@ resource "aws_ecs_task_definition" "name-generator-backend" {
         "hostPort": ${var.frontend_host_port}
       }
     ],
+    "logConfiguration" : {
+        "logDriver" : "awslogs",
+        "options" : {
+          "awslogs-group" : "ecs-demo-logs",
+          "awslogs-region" : "${var.region}",
+          "awslogs-stream-prefix": "frontend-"
+        }
+    },
     "environment": [
       {
         "name": "App",
