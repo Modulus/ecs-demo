@@ -13,6 +13,7 @@ terraform {
 provider "aws" {
   region     = "${var.region}"
   profile = "aws5_ecs_demo_admin"
+  version = "v2.26.0"
 }
 
 data "aws_vpc" "main_vpc" {
@@ -37,7 +38,7 @@ resource "aws_security_group" "allow_http" {
   description = "Control access to ALB"
   vpc_id      = "${data.aws_vpc.main_vpc.id}"
 
-  tags {
+  tags = {
     purpose = "Web traffic"
     Environment = "production"
   }
@@ -65,20 +66,17 @@ output "subnet_names" {
     value = ["${var.subnet_names}"]
 }
 
-data "aws_subnet" "subnets" {
-   # count  = "${length(var.subnet_names)}"
+# data "aws_subnet" "subnets" {
+#    //count  = "${length(var.subnet_names)}"
 
-    #vpc_id = "{${data.aws_vpc.main_vpc.id}}"
-    filter {
-        name = "tag:Name"
-        values = ["${var.subnet_names[count.index]}"]
-    }
+#     #vpc_id = "{${data.aws_vpc.main_vpc.id}}"
+#     filter {
+#         name = "tag:Name"
+#         values = ["${var.subnet_names}"]
+#     }
 
-}
+# }
 
-output "subnet1_tags" {
-  value = "${data.aws_subnet.subnets.*.tags}"
-}
 
 
 
@@ -131,7 +129,7 @@ resource "aws_alb_target_group" "alb_target_group" {
   protocol    = "HTTP"
   vpc_id      = "${data.aws_vpc.main_vpc.id}"
   target_type = "ip"
-  health_check = {
+  health_check  {
     path    = "/"
     matcher = "200-299"
     port    = "${lookup(var.services[count.index], "container_port")}"
@@ -144,7 +142,6 @@ resource "aws_alb_target_group" "alb_target_group" {
 
 
 resource "aws_alb_listener" "alb_listener_backend" {
-  count = "${length(var.services)}"
   load_balancer_arn = "${aws_lb.main_alb.*.id}"
   port              = "${var.alb_port}"
   protocol          = "HTTP"
@@ -280,7 +277,7 @@ resource "aws_ecs_service" "ecs-service" {
   network_configuration {
     assign_public_ip = true                                                                                                               // Needs to be set to true in a vpc that has public ips
     security_groups  = ["${aws_security_group.ecs_tasks_sg.*.id}"]
-    subnets          = ["${data.aws_subnet.subnets.*.id}"]
+    subnets          = ["${data.aws_subnet_ids.subnet.*.id}"]
   }
 
   load_balancer {

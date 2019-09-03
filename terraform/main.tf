@@ -27,7 +27,6 @@ resource "aws_cloudwatch_log_group" "ecs-demo-logs" {
 }
 
 
-
 data "aws_vpc" "main_vpc" {
   filter {
     name   = "tag:Name"
@@ -50,7 +49,7 @@ output "subnet_ids" {
 
 # Security group for alb
 resource "aws_security_group" "allow_http" {
-  name        = "ecs-demo-backend-security-group"
+  name        = "ecs-demo-alb-security-group"
   description = "Control access to ALB"
   vpc_id      = "${data.aws_vpc.main_vpc.id}"
 
@@ -71,9 +70,9 @@ resource "aws_security_group" "allow_http" {
   }
 
   egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
+    from_port = "0"
+    to_port   = "0"
+    protocol    = "TCP"
     cidr_blocks = ["0.0.0.0/0"]
   }
 }
@@ -108,7 +107,7 @@ resource "aws_security_group" "backend-task-sg" {
     protocol        = "tcp"
     from_port       = "${var.backend_container_port}"
     to_port         = "${var.backend_container_port}"
-    security_groups = ["${aws_security_group.allow_http.id}"]
+    security_groups = ["${aws_security_group.allow_http.id}", "${aws_security_group.frontend-task-sg.id}"]
   }
 
   egress {
@@ -161,12 +160,14 @@ output "alb_dns_entry" {
 
 resource "aws_alb_target_group" "backend_alb_target_group" {
   name        = "${var.backend_target_group_name}"
-  port        = "80"
+  port        = "${var.backend_container_port}"
   protocol    = "HTTP"
   vpc_id      = "${data.aws_vpc.main_vpc.id}"
   target_type = "ip"
+  # slow_start = 30
   health_check {
     path    = "/"
+    protocol = "HTTP"
     matcher = "200-299"
     port    = "${var.backend_container_port}"
   }
@@ -177,13 +178,14 @@ resource "aws_alb_target_group" "backend_alb_target_group" {
 }
 
 resource "aws_alb_target_group" "frontend_alb_target_group" {
-  name        = "frontend-alb-target-group"
-  port        = "80"
+  name        = "${var.frontend_target_group_name}"
+  port        = "${var.frontend_container_port}"
   protocol    = "HTTP"
   vpc_id      = "${data.aws_vpc.main_vpc.id}"
   target_type = "ip"
-
+  # slow_start = 30
   health_check {
+    protocol = "HTTP"
     path    = "/"
     matcher = "200-299"
     port    = "${var.frontend_container_port}"
@@ -196,10 +198,9 @@ resource "aws_alb_target_group" "frontend_alb_target_group" {
 
 resource "aws_alb_listener" "alb_listener_backend" {
   load_balancer_arn = "${aws_lb.main_alb.id}"
-  port              = "${var.alb_port}"
+  port              = "80"
   protocol          = "HTTP"
-  #ssl_policy        = "ELBSecurityPolicy-2016-08"
-  #certificate_arn   = "TODO_ADD"
+
 
   default_action {
     target_group_arn = "${aws_alb_target_group.backend_alb_target_group.id}"
@@ -209,10 +210,9 @@ resource "aws_alb_listener" "alb_listener_backend" {
 
 resource "aws_alb_listener" "alb_listene_frontend" {
   load_balancer_arn = "${aws_lb.front_alb.id}"
-  port              = "${var.alb_port}"
+  port              = "80"
   protocol          = "HTTP"
-  #ssl_policy        = "ELBSecurityPolicy-2016-08"
-  #certificate_arn   = "TODO_ADD"
+
 
   default_action {
     target_group_arn = "${aws_alb_target_group.frontend_alb_target_group.id}"
@@ -281,8 +281,8 @@ resource "aws_ecs_cluster" "ecs_cluster" {
 resource "aws_ecs_task_definition" "name-generator-backend" {
   family                   = "${var.backend_service_name}"
   requires_compatibilities = ["FARGATE"]
-  cpu                      = "${var.task_cpu}"
-  memory                   = "${var.task_memory}"
+  cpu                      = "${var.backend_task_cpu}"
+  memory                   = "${var.backend_task_memory}"
   network_mode             = "awsvpc"
   execution_role_arn       = "${aws_iam_role.ecs_role.arn}"
   task_role_arn            = "${aws_iam_role.ecs_role.arn}"
@@ -298,7 +298,7 @@ resource "aws_ecs_task_definition" "name-generator-backend" {
     "portMappings": [
       {
         "containerPort": ${var.backend_container_port},
-        "hostPort": ${var.backend_host_port}
+        "hostPort": ${var.backend_container_port}
       }
     ],
     "logConfiguration" : {
@@ -352,17 +352,60 @@ resource "aws_ecs_task_definition" "name-generator-frontend" {
           "awslogs-region" : "${var.region}",
           "awslogs-stream-prefix": "frontend-"
         }
+
     },
     "environment": [
       {
         "name": "App",
-        "value": "frontend"
+        "value": "backend"
       }
     ]
   }
 ]
 DEFINITION
 }
+
+resource "aws_ecs_task_definition" "name-generator-frontend" {
+  family                   = "${var.frontend_service_name}"
+  requires_compatibilities = ["FARGATE"]
+  cpu                      = "${var.task_cpu}"
+  memory                   = "${var.task_memory}"
+  network_mode             = "awsvpc"
+  execution_role_arn       = "${aws_iam_role.ecs_role.arn}"
+  task_role_arn            = "${aws_iam_role.ecs_role.arn}"
+
+  container_definitions = <<DEFINITION
+  [
+    {
+      "cpu": ${var.frontend_task_cpu},
+      "image": "${var.frontend_image}",
+      "memory": ${var.frontend_task_memory},
+      "name": "${var.frontend_service_name}",
+      "networkMode": "awsvpc",
+      "portMappings": [
+        {
+          "containerPort": ${var.frontend_container_port},
+          "hostPort": ${var.frontend_host_port}
+        }
+      ],
+      "logConfiguration" : {
+        "logDriver" : "awslogs",
+        "options" : {
+          "awslogs-group" : "ecs-demo-logs",
+          "awslogs-region" : "${var.region}",
+          "awslogs-stream-prefix": "frontend-"
+        }
+    },
+      "environment": [
+        {
+          "name": "App",
+          "value": "frontend"
+        }
+      ]
+  }
+]
+DEFINITION
+}  
 
 resource "aws_ecs_service" "backend-service" {
   name = "${var.backend_service_name}"
@@ -418,7 +461,6 @@ data "aws_route53_zone" "selected" {
   private_zone = false
 }
 
-
 resource "aws_route53_record" "frontend_alias_record" {
   zone_id ="${data.aws_route53_zone.selected.zone_id}"  #"${aws_route53_zone.primary.zone_id}"
   name = "${var.frontend_service_dns_name}"
@@ -428,7 +470,7 @@ resource "aws_route53_record" "frontend_alias_record" {
   alias {
     name = "${aws_lb.front_alb.dns_name}"
     zone_id = "${aws_lb.front_alb.zone_id}"
-    evaluate_target_health = true
+    evaluate_target_health = false
   }
 }
 
@@ -441,10 +483,9 @@ resource "aws_route53_record" "backend_alias_record" {
   alias {
     name = "${aws_lb.main_alb.dns_name}"
     zone_id = "${aws_lb.main_alb.zone_id}"
-    evaluate_target_health = true
+    evaluate_target_health = false
   }
 }
-
 
 output "backend_service_fqdn" {
   value = "${aws_route53_record.backend_alias_record.fqdn}"
