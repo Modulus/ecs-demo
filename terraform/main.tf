@@ -15,7 +15,6 @@ provider "aws" {
   profile = "aws5_ecs_demo_admin"
 }
 
-
 # Logging fra containere
 resource "aws_cloudwatch_log_group" "ecs-demo-logs" {
   name = "ecs-demo-logs"
@@ -25,7 +24,6 @@ resource "aws_cloudwatch_log_group" "ecs-demo-logs" {
     Application = "name-generator"
   }
 }
-
 
 data "aws_vpc" "main_vpc" {
   filter {
@@ -302,40 +300,12 @@ resource "aws_ecs_task_definition" "name-generator-backend" {
       }
     ],
     "logConfiguration" : {
-        "logDriver" : "awslogs",
-        "options" : {
-          "awslogs-group" : "ecs-demo-logs",
-          "awslogs-region" : "${var.region}",
-          "awslogs-stream-prefix": "backend-"
-        }
-    },
-    "environment": [
-      {
-        "name": "App",
-        "value": "backend"
+      "logDriver" : "awslogs",
+      "options" : {
+        "awslogs-group" : "ecs-demo-logs",
+        "awslogs-region" : "${var.region}",
+        "awslogs-stream-prefix": "backend-"
       }
-    ]
-  },
-    {
-    "cpu": ${var.backend_task_cpu},
-    "image": "${var.frontend_image}",
-    "memory": ${var.backend_task_memory},
-    "name": "${var.frontend_service_name}",
-    "networkMode": "awsvpc",
-    "portMappings": [
-      {
-        "containerPort": ${var.frontend_container_port},
-        "hostPort": ${var.frontend_host_port}
-      }
-    ],
-    "logConfiguration" : {
-        "logDriver" : "awslogs",
-        "options" : {
-          "awslogs-group" : "ecs-demo-logs",
-          "awslogs-region" : "${var.region}",
-          "awslogs-stream-prefix": "frontend-"
-        }
-
     },
     "environment": [
       {
