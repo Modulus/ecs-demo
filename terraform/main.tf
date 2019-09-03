@@ -294,9 +294,26 @@ resource "aws_ecs_task_definition" "name-generator-backend" {
         "value": "backend"
       }
     ]
-  },
+  }
+]
+DEFINITION
+}
+
+
+# Valid cpu and memory combos: https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task-cpu-memory-error.html
+resource "aws_ecs_task_definition" "name-generator-frontend" {
+  family                   = "${var.frontend_service_name}"
+  requires_compatibilities = ["FARGATE"]
+  cpu                      = "${var.frontend_task_cpu}"
+  memory                   = "${var.frontend_task_memory}"
+  network_mode             = "awsvpc"
+  execution_role_arn       = "${aws_iam_role.ecs_role.arn}"
+  task_role_arn            = "${aws_iam_role.ecs_role.arn}"
+
+  container_definitions = <<DEFINITION
+[
     {
-    "cpu": ${var.backend_task_cpu},
+    "cpu": ${var.frontend_task_cpu},
     "image": "${var.frontend_image}",
     "memory": ${var.backend_task_memory},
     "name": "${var.frontend_service_name}",
@@ -304,7 +321,7 @@ resource "aws_ecs_task_definition" "name-generator-backend" {
     "portMappings": [
       {
         "containerPort": ${var.frontend_container_port},
-        "hostPort": ${var.frontend_host_port}
+        "hostPort": ${var.frontend_container_port}
       }
     ],
     "environment": [
@@ -344,7 +361,7 @@ resource "aws_ecs_service" "backend-service" {
 
 resource "aws_ecs_service" "frontend-service" {
   name = "${var.frontend_service_name}"
-  task_definition = "${aws_ecs_task_definition.name-generator-backend.arn}"
+  task_definition = "${aws_ecs_task_definition.name-generator-frontend.arn}"
   cluster = "${aws_ecs_cluster.ecs_cluster.arn}"
   desired_count = 1
   launch_type = "FARGATE"
@@ -372,18 +389,6 @@ data "aws_route53_zone" "selected" {
   private_zone = false
 }
 
-//// TODO Create A with alias instead of CNAME 
-# resource "aws_route53_record" "backend_record" {
-#   zone_id        = "${data.aws_route53_zone.selected.zone_id}"
-#   name           = "${var.backend_service_name}"
-#   type           = "CNAME"
-#   ttl            = "60"
-#   set_identifier = "${aws_lb.main_alb.dns_name}"
-#   records        = ["${aws_lb.main_alb.dns_name}"]
-#   weighted_routing_policy {
-#     weight = 10
-#   }
-# }
 
 resource "aws_route53_record" "frontend_alias_record" {
   zone_id ="${data.aws_route53_zone.selected.zone_id}"  #"${aws_route53_zone.primary.zone_id}"
@@ -411,19 +416,6 @@ resource "aws_route53_record" "backend_alias_record" {
   }
 }
 
-
-
-# resource "aws_route53_record" "frontend_record" {
-#   zone_id        = "${data.aws_route53_zone.selected.zone_id}"
-#   name           = "${var.frontend_service_name}"
-#   type           = "CNAME"
-#   ttl            = "60"
-#   set_identifier = "${aws_lb.front_alb.dns_name}"
-#   records        = ["${aws_lb.front_alb.dns_name}"]
-#  weighted_routing_policy {
-#     weight = 10
-#   }
-# }
 
 output "backend_service_fqdn" {
   value = "${aws_route53_record.backend_alias_record.fqdn}"
