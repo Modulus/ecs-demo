@@ -281,8 +281,8 @@ resource "aws_ecs_cluster" "ecs_cluster" {
 resource "aws_ecs_task_definition" "name-generator-backend" {
   family                   = "${var.backend_service_name}"
   requires_compatibilities = ["FARGATE"]
-  cpu                      = "${var.backend_task_cpu}"
-  memory                   = "${var.backend_task_memory}"
+  cpu                      = "${var.task_cpu}"
+  memory                   = "${var.task_memory}"
   network_mode             = "awsvpc"
   execution_role_arn       = "${aws_iam_role.ecs_role.arn}"
   task_role_arn            = "${aws_iam_role.ecs_role.arn}"
@@ -365,47 +365,6 @@ resource "aws_ecs_task_definition" "name-generator-frontend" {
 DEFINITION
 }
 
-resource "aws_ecs_task_definition" "name-generator-frontend" {
-  family                   = "${var.frontend_service_name}"
-  requires_compatibilities = ["FARGATE"]
-  cpu                      = "${var.task_cpu}"
-  memory                   = "${var.task_memory}"
-  network_mode             = "awsvpc"
-  execution_role_arn       = "${aws_iam_role.ecs_role.arn}"
-  task_role_arn            = "${aws_iam_role.ecs_role.arn}"
-
-  container_definitions = <<DEFINITION
-  [
-    {
-      "cpu": ${var.frontend_task_cpu},
-      "image": "${var.frontend_image}",
-      "memory": ${var.frontend_task_memory},
-      "name": "${var.frontend_service_name}",
-      "networkMode": "awsvpc",
-      "portMappings": [
-        {
-          "containerPort": ${var.frontend_container_port},
-          "hostPort": ${var.frontend_host_port}
-        }
-      ],
-      "logConfiguration" : {
-        "logDriver" : "awslogs",
-        "options" : {
-          "awslogs-group" : "ecs-demo-logs",
-          "awslogs-region" : "${var.region}",
-          "awslogs-stream-prefix": "frontend-"
-        }
-    },
-      "environment": [
-        {
-          "name": "App",
-          "value": "frontend"
-        }
-      ]
-  }
-]
-DEFINITION
-}  
 
 resource "aws_ecs_service" "backend-service" {
   name = "${var.backend_service_name}"
@@ -433,7 +392,7 @@ resource "aws_ecs_service" "backend-service" {
 
 resource "aws_ecs_service" "frontend-service" {
   name = "${var.frontend_service_name}"
-  task_definition = "${aws_ecs_task_definition.name-generator-frontend.arn}"
+  task_definition = "${aws_ecs_task_definition.name-generator-backend.arn}"
   cluster = "${aws_ecs_cluster.ecs_cluster.arn}"
   desired_count = 1
   launch_type = "FARGATE"
