@@ -1,5 +1,8 @@
 variable "region" {}
 variable "backend_target_group_name" {}
+
+variable "frontend_target_group_name" {}
+
 variable "route53_zone_domain" {}
 variable backend_service_name {}
 
@@ -20,9 +23,9 @@ variable frontend_container_port {}
 variable frontend_host_port {}
 variable frontend_image {}
 
-variable "services" {
 
-}
+variable frontend_task_cpu {}
+variable frontend_task_memory {}
 
 variable backend_service_dns_name {}
 variable frontend_service_dns_name {}
