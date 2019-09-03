@@ -16,12 +16,27 @@ provider "aws" {
   version = "v2.26.0"
 }
 
+# Logging fra containere
+resource "aws_cloudwatch_log_group" "ecs-demo-logs" {
+  name = "ecs-demo-logs"
+
+  tags = {
+    Environment = "production"
+    Application = "name-generator"
+  }
+}
+
+
 data "aws_vpc" "main_vpc" {
   #cidr_block = "172.31.0.0/16"
   filter {
     name   = "tag:Name"
     values = ["${var.vpc_name}"]
   }
+}
+
+data "aws_subnet_ids" "default_subnet_ids" {
+  vpc_id = "${data.aws_vpc.main_vpc.id}"
 }
 
 output "vpc_cidr_block" {
@@ -111,7 +126,7 @@ resource "aws_lb" "main_alb" {
   //internal           = false
   load_balancer_type = "application"
   security_groups    = ["${aws_security_group.allow_http.id}"]
-  subnets            = ["${data.aws_subnet_ids.subnet.ids}"]
+  subnets            = flatten(data.aws_subnet_ids.subnet.ids)
   enable_deletion_protection = false
 
   tags = {
@@ -142,14 +157,12 @@ resource "aws_alb_target_group" "alb_target_group" {
 
 
 resource "aws_alb_listener" "alb_listener_backend" {
-  load_balancer_arn = "${aws_lb.main_alb.*.id}"
+  count = "${length(var.services)}"
+  load_balancer_arn = "${lookup(aws_lb.main_alb[count.index], "id")}"
   port              = "${var.alb_port}"
   protocol          = "HTTP"
-  #ssl_policy        = "ELBSecurityPolicy-2016-08"
-  #certificate_arn   = "TODO_ADD"
-
   default_action {
-    target_group_arn = "${aws_alb_target_group.alb_target_group.*.id}"
+    target_group_arn = "${lookup(aws_alb_target_group.alb_target_group[count.index], "id")}"
     type             = "forward"
   }
 }
@@ -213,10 +226,11 @@ resource "aws_ecs_cluster" "ecs_cluster" {
 
 
 resource "aws_ecs_task_definition" "ecs-task-definition" {
-  family                   = "${var.ecs_cluster_name}-task-definition"
+  count = "${length(var.services)}"
+  family                   = "${var.ecs_cluster_name}-${lookup(var.services[count.index], "tier")}-task-definition"
   requires_compatibilities = ["FARGATE"]
-  cpu                      = "${var.task_cpu}"
-  memory                   = "${var.task_memory}"
+  cpu                      = "${lookup(var.services[count.index], "container_port")}"
+  memory                   = "${lookup(var.services[count.index], "cpu")}"
   network_mode             = "awsvpc"
   execution_role_arn       = "${aws_iam_role.ecs_role.arn}"
   task_role_arn            = "${aws_iam_role.ecs_role.arn}"
@@ -224,41 +238,29 @@ resource "aws_ecs_task_definition" "ecs-task-definition" {
   container_definitions = <<DEFINITION
 [
   {
-    "cpu": ${lookup(var.services[0], "cpu")},
-    "image": "${lookup(var.services[0], "image")}",
-    "memory": ${lookup(var.services[0],"memory")},
-    "name": "${lookup(var.services[0], "name")}",
+    "cpu": ${lookup(var.services[count.index], "cpu")},
+    "image": "${lookup(var.services[count.index], "image")}",
+    "memory": ${lookup(var.services[count.index],"memory")},
+    "name": "${lookup(var.services[count.index], "name")}",
     "networkMode": "awsvpc",
     "portMappings": [
       {
-        "containerPort": ${lookup(var.services[0], "container_port")},
-        "hostPort": ${lookup(var.services[0], "host_port")}
+        "containerPort": ${lookup(var.services[count.index], "container_port")},
+        "hostPort": ${lookup(var.services[count.index], "host_port")}
       }
     ],
+    "logConfiguration" : {
+        "logDriver" : "awslogs",
+        "options" : {
+          "awslogs-group" : "ecs-demo-logs",
+          "awslogs-region" : "${var.region}",
+          "awslogs-stream-prefix": "${lookup(var.services[count.index], "tier")}-"
+        }
+    },
     "environment": [
       {
         "name": "App",
-        "value": "${lookup(var.services[0], "tier")}"
-      }
-    ]
-  }
-  ,
-    {
-    "cpu": ${lookup(var.services[1], "cpu")},
-    "image":  "${lookup(var.services[1], "image")}",
-    "memory": ${lookup(var.services[1],"memory")},
-    "name": "${lookup(var.services[1], "name")}",
-    "networkMode": "awsvpc",
-    "portMappings": [
-    {
-        "containerPort": ${lookup(var.services[1],"container_port")},
-        "hostPort": ${lookup(var.services[1],"host_port")}
-      }
-    ],
-    "environment": [
-      {
-        "name": "App",
-        "value": "${lookup(var.services[1], "tier")}"
+        "value": "${lookup(var.services[count.index], "tier")}"
       }
     ]
   }
@@ -269,26 +271,22 @@ DEFINITION
 resource "aws_ecs_service" "ecs-service" {
   count = "${length(var.services)}"
   name            = "${lookup(var.services[count.index], "name")}"
-  task_definition = "${aws_ecs_task_definition.ecs-task-definition.arn}"
+  task_definition = "${lookup(aws_ecs_task_definition.ecs-task-definition[count.index], "arn")}"
   cluster         = "${aws_ecs_cluster.ecs_cluster.arn}"
   desired_count   = 1
   launch_type     = "FARGATE"
 
   network_configuration {
     assign_public_ip = true                                                                                                               // Needs to be set to true in a vpc that has public ips
-    security_groups  = ["${aws_security_group.ecs_tasks_sg.*.id}"]
-    subnets          = ["${data.aws_subnet_ids.subnet.*.id}"]
+    security_groups  = ["${var.ecs_cluster_name}-${lookup(var.services[count.index], "name")}-security-group"]
+    subnets          = flatten(data.aws_subnet_ids.default_subnet_ids.ids)
   }
 
   load_balancer {
     container_name   = "${lookup(var.services[count.index], "name")}"
     container_port   = "${lookup(var.services[count.index], "container_port")}"
-    target_group_arn = "${aws_alb_target_group.alb_target_group.*.arn}"
+    target_group_arn = "${lookup(aws_alb_target_group.alb_target_group[count.index], "arn")}"
   }
-
-  # depends_on = [
-  #   "aws_alb_listener.alb_listener_backend",
-  # ]
 }
 
 data "aws_route53_zone" "selected" {
@@ -303,18 +301,10 @@ resource "aws_route53_record" "route53_record" {
   name           = "${lookup(var.services[count.index], "name")}"
   type           = "CNAME"
   ttl            = "60"
-  set_identifier = "${aws_lb.main_alb.*.dns_name}"
-  records        = ["${aws_lb.main_alb.*.dns_name}"]
+  set_identifier = "${lookup(aws_lb.main_alb[count.index], "dns_name")}"
+  records        = [ "${lookup(aws_lb.main_alb[count.index], "dns_name")}" ]
   weighted_routing_policy {
     weight = 10
   }
-}
-
-output "service_fqdn" {
-  value = "${aws_route53_record.route53_record.*.fqdn}"
-}
-
-output "service_name" {
-  value = "${aws_route53_record.route53_record.*.name}"
 }
 

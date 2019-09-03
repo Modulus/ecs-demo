@@ -28,8 +28,7 @@ backend_host_port      = 5000
 
 
 
-frontend_task_cpu = 2048
-frontend_task_memory = 4096
+
 
 
 ecs_cluster_name = "ecs-demo"

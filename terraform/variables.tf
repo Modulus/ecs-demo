@@ -30,10 +30,3 @@ variable frontend_task_memory {}
 variable backend_service_dns_name {}
 variable frontend_service_dns_name {}
 
-variable frontend_task_cpu {
-  default = 2048
-}
-variable frontend_task_memory {
-  default = 4096
-}
-
