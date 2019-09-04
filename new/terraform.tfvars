@@ -45,7 +45,7 @@ services = [
     },
     {
         "id" = 2,
-        "name" = "frontend"
+        "name" = "name"
         "container_port" = 80,
         "host_port" = 80
         "image" = "coderpews/name-generator-front:2.0",

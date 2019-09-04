@@ -156,9 +156,9 @@ resource "aws_alb_target_group" "alb_target_group" {
 }
 
 
-resource "aws_alb_listener" "alb_listener_backend" {
+resource "aws_alb_listener" "alb_listener_all" {
   count = "${length(var.services)}"
-  load_balancer_arn = "${lookup(aws_lb.main_alb[count.index], "id")}"
+  load_balancer_arn = "${lookup(aws_lb.main_alb[count.index], "arn")}"
   port              = "${var.alb_port}"
   protocol          = "HTTP"
   default_action {
@@ -229,8 +229,8 @@ resource "aws_ecs_task_definition" "ecs-task-definition" {
   count = "${length(var.services)}"
   family                   = "${var.ecs_cluster_name}-${lookup(var.services[count.index], "tier")}-task-definition"
   requires_compatibilities = ["FARGATE"]
-  cpu                      = "${lookup(var.services[count.index], "container_port")}"
-  memory                   = "${lookup(var.services[count.index], "cpu")}"
+  cpu                      = "${lookup(var.services[count.index], "cpu")}"
+  memory                   = "${lookup(var.services[count.index], "memory")}"
   network_mode             = "awsvpc"
   execution_role_arn       = "${aws_iam_role.ecs_role.arn}"
   task_role_arn            = "${aws_iam_role.ecs_role.arn}"
@@ -278,7 +278,7 @@ resource "aws_ecs_service" "ecs-service" {
 
   network_configuration {
     assign_public_ip = true                                                                                                               // Needs to be set to true in a vpc that has public ips
-    security_groups  = ["${var.ecs_cluster_name}-${lookup(var.services[count.index], "name")}-security-group"]
+    security_groups  = ["${lookup(aws_security_group.ecs_tasks_sg[count.index], "id")}"]
     subnets          = flatten(data.aws_subnet_ids.default_subnet_ids.ids)
   }
 
@@ -287,6 +287,10 @@ resource "aws_ecs_service" "ecs-service" {
     container_port   = "${lookup(var.services[count.index], "container_port")}"
     target_group_arn = "${lookup(aws_alb_target_group.alb_target_group[count.index], "arn")}"
   }
+
+  depends_on = [
+    "aws_alb_listener.alb_listener_all"
+  ]
 }
 
 data "aws_route53_zone" "selected" {
@@ -295,16 +299,21 @@ data "aws_route53_zone" "selected" {
 }
 
 
-resource "aws_route53_record" "route53_record" {
+resource "aws_route53_record" "a_record" {
   count = "${length(var.services)}"
-  zone_id        = "${data.aws_route53_zone.selected.zone_id}"
+  zone_id = "${data.aws_route53_zone.selected.zone_id}" #"${aws_route53_zone.primary.zone_id}"
   name           = "${lookup(var.services[count.index], "name")}"
-  type           = "CNAME"
-  ttl            = "60"
-  set_identifier = "${lookup(aws_lb.main_alb[count.index], "dns_name")}"
-  records        = [ "${lookup(aws_lb.main_alb[count.index], "dns_name")}" ]
-  weighted_routing_policy {
-    weight = 10
+
+  type = "A"
+
+  alias {
+    name = "${lookup(aws_lb.main_alb[count.index], "dns_name")}"
+    zone_id = "${lookup(aws_lb.main_alb[count.index], "zone_id")}"
+    evaluate_target_health = true
   }
 }
 
+
+output "fqdns" {
+  value = ["${aws_route53_record.a_record.*.fqdn}"]
+}
