@@ -81,17 +81,6 @@ output "subnet_names" {
     value = ["${var.subnet_names}"]
 }
 
-# data "aws_subnet" "subnets" {
-#    //count  = "${length(var.subnet_names)}"
-
-#     #vpc_id = "{${data.aws_vpc.main_vpc.id}}"
-#     filter {
-#         name = "tag:Name"
-#         values = ["${var.subnet_names}"]
-#     }
-
-# }
-
 
 
 
@@ -179,8 +168,6 @@ resource "aws_iam_role" "ecs_role" {
       "Action": "sts:AssumeRole",
       "Principal": {
         "Service": [
-          "ec2.amazonaws.com",
-          "ecs.amazonaws.com",
           "ecs-tasks.amazonaws.com"
         ]
       },
@@ -201,10 +188,8 @@ resource "aws_iam_role_policy" "task_policy" {
   "Statement": [
     {
       "Action": [
-        "ec2:Describe*",
-        "ecr:*",
-        "ecs:*",
-        "logs:*"
+        "logs:CreateLogStream",
+        "logs:PutLogEvents"
 
       ],
       "Effect": "Allow",
@@ -214,6 +199,10 @@ resource "aws_iam_role_policy" "task_policy" {
 }
 EOF
 }
+
+   # "ecr:*",
+        # "ecs:*",
+     
 
 
 resource "aws_ecs_cluster" "ecs_cluster" {

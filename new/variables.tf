@@ -40,4 +40,8 @@ variable "task_memory" {
   default = 8192
 } 
 
+variable "backend_host_port" {
+  default = 5000
+}
+
 

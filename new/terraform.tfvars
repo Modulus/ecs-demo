@@ -1,30 +1,8 @@
 region = "eu-west-1"
 
-
-backend_target_group_name = "ecs-demo-backend-target-group"
-
-
 route53_zone_domain = "aws5.tv2.no."
 
-
-task_cpu = 4096
-task_memory = 8192
-
-backend_service_name  = "generator"
-
-
-backend_task_cpu = 2048
-
-backend_task_memory = 4096
-
-backend_container_port = 5000
-backend_host_port = 5000
-   
 ecs_cluster_name = "ecs-demo"
-
-
-
-
 
 alb_port = 80
 
@@ -48,7 +26,7 @@ services = [
         "name" = "name"
         "container_port" = 80,
         "host_port" = 80
-        "image" = "coderpews/name-generator-front:2.0",
+        "image" = "coderpews/name-generator-front:2.2",
         "tier" = "frontend",
         "cpu" = "2048"
         "memory" = "4096"
