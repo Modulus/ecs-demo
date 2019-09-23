@@ -243,7 +243,7 @@ resource "aws_ecs_task_definition" "ecs-task-definition" {
         "options" : {
           "awslogs-group" : "ecs-demo-logs",
           "awslogs-region" : "${var.region}",
-          "awslogs-stream-prefix": "${lookup(var.services[count.index], "tier")}-"
+          "awslogs-stream-prefix": "${lookup(var.services[count.index], "tier")}"
         }
     },
     "environment": [
