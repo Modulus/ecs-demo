@@ -1,4 +1,4 @@
-variable "services" {
+variable "containers" {
     type = "list"
 } 
 
