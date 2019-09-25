@@ -2,7 +2,7 @@ region = "eu-west-1"
 
 route53_zone_domain = "aws5.tv2.no."
 
-ecs_cluster_name = "ecs-demo"
+ecs_cluster_name = "fargate-demo"
 
 alb_port = 80
 
@@ -35,4 +35,3 @@ containers = [
 
 vpc_name = "Default VPC"
 
-subnet_names = ["Default subnet for eu-west-1c", "Default subnet for eu-west-1a", "Default subnet for eu-west-1b"]

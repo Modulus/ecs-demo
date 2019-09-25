@@ -16,7 +16,6 @@ provider "aws" {
   version = "v2.26.0"
 }
 
-# Logging fra containere
 resource "aws_cloudwatch_log_group" "ecs-demo-logs" {
   name = "fargate-demo-logs"
 
@@ -28,7 +27,6 @@ resource "aws_cloudwatch_log_group" "ecs-demo-logs" {
 
 
 data "aws_vpc" "main_vpc" {
-  #cidr_block = "172.31.0.0/16"
   filter {
     name   = "tag:Name"
     values = ["${var.vpc_name}"]
@@ -47,9 +45,6 @@ output "vpc_tags" {
   value = "${data.aws_vpc.main_vpc.tags}"
 }
 
-output "subnet_names" {
-    value = ["${var.subnet_names}"]
-}
 
 resource "aws_security_group" "allow_http" {
   name        = "${var.ecs_cluster_name}-web-security-group"
@@ -62,14 +57,11 @@ resource "aws_security_group" "allow_http" {
   }
 
   ingress {
-    # TLS (change to whatever ports you need)
     from_port = "${var.alb_port}"
     to_port   = "${var.alb_port}"
     protocol  = "TCP"
 
-    # Please restrict your ingress to only necessary IPs and ports.
-    # Opening to 0.0.0.0/0 can lead to security vulnerabilities.
-    cidr_blocks = ["0.0.0.0/0"] # add a CIDR block here
+    cidr_blocks = ["0.0.0.0/0"] 
   }
 
   egress {
@@ -107,7 +99,6 @@ resource "aws_security_group" "ecs_tasks_sg" {
 resource "aws_lb" "main_alb" {
   count = "${length(var.containers)}"
 
-  //internal           = false
   load_balancer_type = "application"
   security_groups    = ["${aws_security_group.allow_http.id}"]
   subnets            = flatten(data.aws_subnet_ids.subnets.ids)
@@ -261,7 +252,7 @@ resource "aws_ecs_service" "ecs-service" {
   launch_type     = "FARGATE"
 
   network_configuration {
-    assign_public_ip = true                                                                                                               // Needs to be set to true in a vpc that has public ips
+    assign_public_ip = true
     security_groups  = ["${lookup(aws_security_group.ecs_tasks_sg[count.index], "id")}"]
     subnets          = flatten(data.aws_subnet_ids.subnets.ids)
   }

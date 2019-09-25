@@ -7,13 +7,8 @@ variable "vpc_name" {
     default = "Default VPC"
 }
 
-variable "subnet_names" {
-  type = "list"
-}
-
-
 variable "ecs_cluster_name" {
-    default ="ecs-demo"
+    default ="fargate-demo"
     type = "string"
 }
 
