@@ -16,8 +16,6 @@ containers = [
         "tier"  = "backend",
         "cpu" = "2048",
         "memory" = "4096"
-
-
     },
     {
         "id" = 2,

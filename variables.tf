@@ -26,3 +26,17 @@ variable "route53_zone_domain" {
   default = ""
 }
 
+variable "cpu_low_threshold" {
+  default = "20"
+}
+
+variable "cpu_high_threshold" {
+  default = "80"
+}
+
+variable "scale_down_min_capacity" {
+  default = 1
+}
+variable "scale_down_max_capacity" {
+  default = 3
+}
