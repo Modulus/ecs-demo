@@ -112,7 +112,6 @@ resource "aws_lb" "main_alb" {
 }
 
 
-## TODO Set port to container_port
 
 resource "aws_alb_target_group" "alb_target_group" {
   count = "${length(var.containers)}"
@@ -208,7 +207,6 @@ resource "aws_ecs_task_definition" "ecs-task-definition" {
   memory                   = "${lookup(var.containers[count.index], "memory")}"
   network_mode             = "awsvpc"
   execution_role_arn       = "${aws_iam_role.ecs_role.arn}"
-  task_role_arn            = "${aws_iam_role.ecs_role.arn}"
 
   container_definitions = <<DEFINITION
 [

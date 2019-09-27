@@ -26,17 +26,3 @@ variable "route53_zone_domain" {
   default = ""
 }
 
-
-variable "task_cpu" {
-  default = 4096
-} 
-
-variable "task_memory" {
-  default = 8192
-} 
-
-variable "backend_host_port" {
-  default = 5000
-}
-
-
