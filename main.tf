@@ -18,7 +18,7 @@ provider "aws" {
 
 resource "aws_cloudwatch_log_group" "ecs-demo-logs" {
   name = "fargate-demo-logs"
-
+  retention_in_days = 30
   tags = {
     Environment = "production"
     Application = "name-generator"
@@ -166,25 +166,31 @@ resource "aws_iam_role" "ecs_role" {
 EOF
 }
 
-resource "aws_iam_role_policy" "task_policy" {
-  role = "${aws_iam_role.ecs_role.id}"
+# resource "aws_iam_role_policy" "task_policy" {
+#   role = "${aws_iam_role.ecs_role.id}"
 
-  policy = <<EOF
-{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Action": [
-        "logs:CreateLogStream",
-        "logs:PutLogEvents"
+#   policy = <<EOF
+# {
+#   "Version": "2012-10-17",
+#   "Statement": [
+#     {
+#       "Action": [
+#         "logs:CreateLogStream",
+#         "logs:PutLogEvents"
 
-      ],
-      "Effect": "Allow",
-      "Resource": "*"
-    }
-  ]
-}
-EOF
+#       ],
+#       "Effect": "Allow",
+#       "Resource": "*"
+#     }
+#   ]
+# }
+# EOF
+# }
+
+
+resource "aws_iam_role_policy_attachment" "ecsTaskExecutionRolePolicy" {
+  role =  aws_iam_role.ecs_role.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
 }
 
      
@@ -246,7 +252,7 @@ resource "aws_ecs_service" "ecs-service" {
   name            = "${lookup(var.containers[count.index], "name")}"
   task_definition = "${lookup(aws_ecs_task_definition.ecs-task-definition[count.index], "arn")}"
   cluster         = "${aws_ecs_cluster.ecs_cluster.arn}"
-  desired_count   = 1
+  desired_count   = 0
   launch_type     = "FARGATE"
 
   network_configuration {
