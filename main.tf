@@ -252,7 +252,7 @@ resource "aws_ecs_service" "ecs-service" {
   name            = "${lookup(var.containers[count.index], "name")}"
   task_definition = "${lookup(aws_ecs_task_definition.ecs-task-definition[count.index], "arn")}"
   cluster         = "${aws_ecs_cluster.ecs_cluster.arn}"
-  desired_count   = 0
+  desired_count   = 1
   launch_type     = "FARGATE"
 
   network_configuration {

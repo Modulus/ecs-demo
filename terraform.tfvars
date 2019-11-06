@@ -14,8 +14,8 @@ containers = [
         "host_port" = 5000,
         "image" = "coderpews/name-generator:1.4",
         "tier"  = "backend",
-        "cpu" = "2048",
-        "memory" = "4096"
+        "cpu" = "256",
+        "memory" = "512"
     },
     {
         "id" = 2,
@@ -24,8 +24,8 @@ containers = [
         "host_port" = 80
         "image" = "coderpews/name-generator-front:2.2",
         "tier" = "frontend",
-        "cpu" = "2048"
-        "memory" = "4096"
+        "cpu" = "256"
+        "memory" = "512"
 
 
     }
