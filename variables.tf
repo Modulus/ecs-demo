@@ -40,3 +40,4 @@ variable "scale_down_min_capacity" {
 variable "scale_down_max_capacity" {
   default = 3
 }
+
