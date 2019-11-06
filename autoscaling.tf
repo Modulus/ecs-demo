@@ -11,9 +11,9 @@ resource "aws_appautoscaling_target" "app_scale_target" {
 
 resource "aws_appautoscaling_policy" "app_up" {
   name               = "app-scale-up"
-  service_namespace  = aws_appautoscaling_target.app_scale_target.service_namespace
-  resource_id        = aws_appautoscaling_target.app_scale_target.resource_id
-  scalable_dimension = aws_appautoscaling_target.app_scale_target.scalable_dimension
+  service_namespace  = "${aws_appautoscaling_target.app_scale_target.service_namespace}"
+  resource_id        = "${aws_appautoscaling_target.app_scale_target.resource_id}"
+  scalable_dimension = "${aws_appautoscaling_target.app_scale_target.scalable_dimension}"
 
   step_scaling_policy_configuration {
     adjustment_type         = "ChangeInCapacity"
@@ -37,14 +37,14 @@ resource "aws_cloudwatch_metric_alarm" "service_cpu_high" {
     namespace           = "AWS/ECS"
     period              = "60"
     statistic           = "Average"
-    threshold           = var.ecs_as_cpu_high_threshold_per
+    threshold           = "${var.ecs_as_cpu_high_threshold_per}"
 
     dimensions = {
         ClusterName = "${var.ecs_cluster_name}"
         ServiceName = "${lookup(var.containers[count.index], "name")}"
     }
 
-    alarm_actions = [aws_appautoscaling_policy.app_up.arn]
+    alarm_actions = ["${aws_appautoscaling_policy.app_up.arn}"]
 }
 
 
@@ -68,7 +68,7 @@ resource "aws_appautoscaling_policy" "down" {
         }
   }
 
-  depends_on = [aws_appautoscaling_target.app_scale_target]
+  # depends_on = [aws_appautoscaling_target.app_scale_target]
 }
 
 
@@ -88,7 +88,7 @@ resource "aws_cloudwatch_metric_alarm" "service_cpu_low" {
         ServiceName = "${lookup(var.containers[count.index], "name")}"
     }
 
-    alarm_actions = [aws_appautoscaling_policy.down.arn]
+    alarm_actions = ["${aws_appautoscaling_policy.down.arn}"]
 }
 
 
