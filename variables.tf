@@ -1,19 +1,19 @@
 variable "containers" {
-    type = "list"
+    type = list
 } 
 
 variable "vpc_name" { 
-    type = "string"
+    type = string
     default = "Default VPC"
 }
 
 variable "ecs_cluster_name" {
     default ="fargate-demo"
-    type = "string"
+    type = string
 }
 
 variable "region" {
-    type = "string"
+    type = string
     default = "eu-west-1" 
 }
 
@@ -22,7 +22,7 @@ variable "alb_port" {
 }
 
 variable "route53_zone_domain" {
-  type = "string"
+  type = string
   default = ""
 }
 

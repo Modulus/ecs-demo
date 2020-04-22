@@ -12,22 +12,22 @@ containers = [
         "name" = "generator"
         "container_port" = 5000,
         "host_port" = 5000,
-        "image" = "coderpews/name-generator:1.4",
+        "image" = "coderpews/name-generator:1.5",
         "tier"  = "backend",
-        "cpu" = "2048",
-        "memory" = "4096"
+        "cpu" = "256",
+        "memory" = "512"
 
 
     },
     {
         "id" = 2,
-        "name" = "name"
+        "name" = "names"
         "container_port" = 80,
         "host_port" = 80
-        "image" = "coderpews/name-generator-front:2.2",
+        "image" = "coderpews/name-generator-front:2.5",
         "tier" = "frontend",
-        "cpu" = "2048"
-        "memory" = "4096"
+        "cpu" = "256"
+        "memory" = "512"
 
 
     }
